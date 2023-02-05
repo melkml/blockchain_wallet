@@ -4,9 +4,11 @@ import { PeerActionData, PeerBroadcastAction } from "./peer-action";
 import { Chain } from "./chain";
 import { GenerateKey, GenerateStringKey } from "./utils/generate-key";
 
+export type Key = string | Buffer;
+
 export type PublicKeyListInObject = {
   address: string;
-  publicKey: string | Buffer;
+  publicKey: Key;
 };
 export type ShareLedger = Chain & {
   publicKeyList: PublicKeyListInObject[];
@@ -14,8 +16,9 @@ export type ShareLedger = Chain & {
 
 export class Peer {
   address: string;
-  private readonly privateKey: string | Buffer;
-  readonly publicKey: string | Buffer;
+  addressConnecteds: string[] = [];
+  private readonly privateKey: Key;
+  readonly publicKey: Key;
   ledger?: Chain;
   socket: Socket | undefined;
   connections: Socket[] = [];
@@ -59,6 +62,7 @@ export class Peer {
     this.socket = new Socket();
 
     this.socket.connect(+port, host, () => {
+      this.addressConnecteds.push(address);
       this.onConnect();
     });
   }
@@ -85,16 +89,30 @@ export class Peer {
 
     switch (peerAction.action) {
       case PeerBroadcastAction.SHARE_LEDGER:
-        this.ledger = new Chain();
-        this.ledger.setPublicKeyList = peerAction.data.publicKeyList;
-        this.ledger.setPublicKey(this.address, this.publicKey);
-        this.ledger.setBlocks = peerAction.data.blocks;
+        if (!this.ledger) {
+          const publicKeyList = peerAction.data
+            .publicKeyList as PublicKeyListInObject[];
 
+          this.ledger = new Chain();
+          this.ledger.setPublicKeyList = publicKeyList;
+          this.ledger.setPublicKey(this.address, this.publicKey);
+          this.ledger.setBlocks = peerAction.data.blocks;
+
+          // Se conectando a todos os outros peers da rede.
+
+          publicKeyList.forEach(({ address }) => {
+            if (!this.addressConnecteds.includes(address)) {
+              this.connect(address);
+            }
+          });
+        }
         break;
       case PeerBroadcastAction.SHARE_PUBLIC_KEY:
         if (this.ledger) {
           const { address, publicKey } = peerAction.data;
           this.ledger.setPublicKey(address, publicKey);
+
+          this.addressConnecteds.push(address);
         }
         break;
     }
