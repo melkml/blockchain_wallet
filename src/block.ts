@@ -1,21 +1,29 @@
 import { CreateTransaction, Transaction } from "./transaction";
 import crypto from "crypto";
 
+const AMOUNT_MAX = 10;
+
 export class Block {
   id?: string;
   prevBlockId: string;
   transactions: Transaction[] = [];
+  amount: number = 0;
   validate: boolean = false;
 
   constructor(prevBlockId: string) {
     this.prevBlockId = prevBlockId;
   }
 
-  insertTransaction(dto: CreateTransaction) {
-    this.transactions.push(new Transaction(dto));
+  insertTransaction(transaction: Transaction) {
+    this.transactions.push(transaction);
+    this.amount++;
   }
 
-  closeBox() {
+  isFull() {
+    return this.amount === AMOUNT_MAX;
+  }
+
+  closeBlock() {
     this.id = this.generateId(this.prevBlockId);
   }
 

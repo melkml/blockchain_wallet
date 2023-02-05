@@ -1,5 +1,6 @@
 import { Block } from "./block";
 import { PublicKeyListInObject, ShareLedger } from "./peer";
+import { CreateTransaction, Transaction } from "./transaction";
 
 export class Chain {
   blocks: Block[] = [];
@@ -16,9 +17,27 @@ export class Chain {
   update(chain: ShareLedger) {
     this.setPublicKeyList = chain.publicKeyList;
     this.setBlocks = chain.blocks;
-    this.currentBlock = chain.currentBlock;
+
+    if (chain.currentBlock) {
+      this.currentBlock = new Block(chain.currentBlock.prevBlockId);
+    }
   }
 
+  insertTransaction(transaction: Transaction) {
+    if (this.currentBlock) {
+      this.currentBlock.insertTransaction(transaction);
+
+      if (this.currentBlock.isFull()) {
+        this.currentBlock.closeBlock();
+        this.currentBlock = new Block(this.currentBlock.id as string);
+        this.blocks.push(this.currentBlock);
+      }
+    }
+  }
+
+  getPublicKey(address: string) {
+    return this.publicKeyList.get(address);
+  }
   setPublicKey(address: string, publicKey: string | Buffer) {
     this.publicKeyList.set(address, publicKey);
   }
@@ -30,6 +49,8 @@ export class Chain {
   }
 
   set setBlocks(blocks: Block[]) {
-    this.blocks.push(...blocks);
+    for (const block of blocks) {
+      this.blocks.push(new Block(block.prevBlockId));
+    }
   }
 }

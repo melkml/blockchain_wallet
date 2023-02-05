@@ -1,46 +1,52 @@
 import * as crypto from "crypto";
+import { Key } from "./peer";
 
 export interface CreateTransaction {
   action: TransactionAction;
   actor: string;
-  privateKeyActor: string;
+  privateKeyActor: Key;
   recipient?: string;
   value: number;
 }
 
 export enum TransactionAction {
   WITHDRAW = "withdraw",
-  TRANFER = "transfer",
+  TRANSFER = "transfer",
 }
 
-export class Transaction {
-  id: string;
+export interface TransactionData {
   actor: string;
   recipient?: string;
   action: TransactionAction;
   timestamp: Date;
   value: number;
+}
+
+export class Transaction {
+  id: Buffer;
+  data: TransactionData;
 
   constructor(transactionDto: CreateTransaction) {
     const { actor, recipient, action, value, privateKeyActor } = transactionDto;
 
-    this.actor = actor;
-    this.recipient = recipient;
-    this.value = value;
-    this.action = action;
-    this.timestamp = new Date();
+    this.data = {
+      actor,
+      recipient,
+      value,
+      action,
+      timestamp: new Date(),
+    };
+
     this.id = this.generateId(privateKeyActor);
   }
 
-  private generateId(privateKeyActor: string) {
-    const transaction = Buffer.from(JSON.stringify(this));
+  private generateId(privateKey: Key) {
+    const data = Buffer.from(JSON.stringify(this.data));
 
-    const assignture = crypto.sign("SHA256", transaction, privateKeyActor);
-
-    return JSON.stringify(assignture);
+    return crypto.sign("SHA256", data, privateKey);
   }
 
   private is(action: TransactionAction) {
-    return this.action === action;
+    return this.data.action === action;
   }
 }
