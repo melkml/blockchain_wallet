@@ -1,8 +1,8 @@
 import { createServer, Socket } from "net";
-import * as crypto from "crypto";
 import { PeerActionData, PeerBroadcastAction } from "./peer-action";
 import { Chain } from "./chain";
 import { GenerateKey, GenerateStringKey } from "./utils/generate-key";
+import { CreateTransaction, Transaction } from "./transaction";
 
 export type Key = string | Buffer;
 
@@ -84,6 +84,16 @@ export class Peer {
     }
   }
 
+  broadcast(peerAction: PeerActionData) {
+    this.connections.forEach((socket) => {
+      socket.write(JSON.stringify(peerAction));
+    });
+  }
+
+  startTransaction(dto: CreateTransaction) {
+    const transaction = new Transaction(dto);
+  }
+
   private handleData(socket: Socket, data: string | Buffer) {
     const peerAction = JSON.parse(data.toString()) as PeerActionData;
 
@@ -94,9 +104,8 @@ export class Peer {
             .publicKeyList as PublicKeyListInObject[];
 
           this.ledger = new Chain();
-          this.ledger.setPublicKeyList = publicKeyList;
+          this.ledger.update(peerAction.data);
           this.ledger.setPublicKey(this.address, this.publicKey);
-          this.ledger.setBlocks = peerAction.data.blocks;
 
           // Se conectando a todos os outros peers da rede.
 
@@ -105,6 +114,8 @@ export class Peer {
               this.connect(address);
             }
           });
+
+          console.log(this.ledger);
         }
         break;
       case PeerBroadcastAction.SHARE_PUBLIC_KEY:
@@ -113,6 +124,7 @@ export class Peer {
           this.ledger.setPublicKey(address, publicKey);
 
           this.addressConnecteds.push(address);
+          console.log(this.ledger);
         }
         break;
     }
@@ -125,12 +137,6 @@ export class Peer {
       this.connections = this.connections.filter((conn) => {
         return conn !== socket;
       });
-    });
-  }
-
-  broadcast(peerAction: PeerActionData) {
-    this.connections.forEach((socket) => {
-      socket.write(JSON.stringify(peerAction));
     });
   }
 
