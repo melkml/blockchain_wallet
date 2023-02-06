@@ -10,6 +10,7 @@ import {
 import * as crypto from "crypto";
 import { Await } from "./utils/await";
 import { Block } from "./block";
+import { welcome } from "./cli/welcome";
 
 export type Key = string | Buffer;
 
@@ -103,6 +104,23 @@ export class Peer {
     });
   }
 
+  exit() {
+    this.broadcast({
+      action: PeerBroadcastAction.EXIT,
+      data: this.address,
+    });
+
+    this.connections.forEach((connection) => {
+      connection.end();
+    });
+
+    this.connections = [];
+    this.ledger = undefined;
+    this.addressConnecteds = [];
+
+    console.log("Você saiu da Melkarteira.");
+  }
+
   startTransaction(dto: CreateTransaction) {
     if (this.ledger && this.ledger.currentBlock) {
       const transaction = new Transaction(dto);
@@ -174,6 +192,13 @@ export class Peer {
 
         this.tryInsertTransaction(transaction, validate);
         break;
+      case PeerBroadcastAction.EXIT:
+        if (this.ledger) {
+          console.log(peerAction.data + " saiu da sala");
+          this.ledger.publicKeyList.delete(peerAction.data);
+        }
+
+        break;
     }
   }
 
@@ -185,6 +210,7 @@ export class Peer {
 
     if (this.ledger && validateByWishes) {
       const feedback = this.ledger.insertTransaction(transaction);
+      console.log("Transação registrada!");
 
       /**
        * Efetivando transactions se o bloco for fechado
@@ -197,7 +223,6 @@ export class Peer {
 
       Peer.amoutWishes = 0;
       Peer.processingTransaction--;
-      console.log("Transaction inserida.", this.ledger.currentBlock);
     }
   }
 
@@ -281,6 +306,7 @@ export class Peer {
   }
 
   private prepareListeners(socket: Socket) {
+    welcome();
     socket.on("data", (data) => this.handleData(socket, data));
 
     socket.on("end", () => {

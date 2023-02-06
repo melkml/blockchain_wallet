@@ -1,3 +1,1 @@
-- Carteira do Peer (ver saldo)
-- Função para filtrar todas as transções de um usupario especifico (afim de validar transações)
-- Handler de dados do terminal (comandos: iniciar transação, ver saldo, etc)
+Corrigir bugs;
