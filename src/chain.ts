@@ -29,8 +29,18 @@ export class Chain {
 
       if (this.currentBlock.isFull()) {
         this.currentBlock.closeBlock();
+
+        /**
+         * Se bloco estiver cheio, efetivar todas as transações do bloco.
+         */
+        const feedback = {
+          effectTransactionsBlock: this.currentBlock,
+        };
+
         this.currentBlock = new Block(this.currentBlock.id as string);
         this.blocks.push(this.currentBlock);
+
+        return feedback;
       }
     }
   }

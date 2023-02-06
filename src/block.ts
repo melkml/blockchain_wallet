@@ -25,6 +25,7 @@ export class Block {
 
   closeBlock() {
     this.id = this.generateId(this.prevBlockId);
+    this.validate = true;
   }
 
   private generateId(prevBlockId: string) {
