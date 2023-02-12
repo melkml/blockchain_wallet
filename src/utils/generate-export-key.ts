@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-export const GenerateKey = (key: string, type: "private" | "public") => {
+export const GenerateExportKey = (key: string, type: "private" | "public") => {
   const method = type === "private" ? "createPrivateKey" : "createPublicKey";
 
   return crypto[method]({
@@ -14,7 +14,7 @@ export const GenerateKey = (key: string, type: "private" | "public") => {
   });
 };
 
-export const GenerateStringKey = () =>
+export const GeneratePairKey = () =>
   crypto.generateKeyPairSync("rsa", {
     modulusLength: 4096,
     publicKeyEncoding: {

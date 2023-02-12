@@ -17,10 +17,6 @@ export class Chain {
   update(chain: ShareLedger) {
     this.setPublicKeyList = chain.publicKeyList;
     this.setBlocks = chain.blocks;
-
-    if (chain.currentBlock) {
-      this.currentBlock = new Block(chain.currentBlock.prevBlockId);
-    }
   }
 
   insertTransaction(transaction: Transaction) {
@@ -59,8 +55,17 @@ export class Chain {
   }
 
   set setBlocks(blocks: Block[]) {
+    const currentBlock = blocks.pop();
+
+    if (!currentBlock) {
+      throw new Error("Chain sem currentBlock");
+    }
+
     for (const block of blocks) {
       this.blocks.push(new Block(block.prevBlockId));
     }
+
+    this.currentBlock = new Block(currentBlock.prevBlockId);
+    this.blocks.push(this.currentBlock);
   }
 }

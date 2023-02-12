@@ -1,7 +1,10 @@
 import { createServer, Socket } from "net";
 import { PeerActionData, PeerBroadcastAction } from "./peer-action";
 import { Chain } from "./chain";
-import { GenerateKey, GenerateStringKey } from "./utils/generate-key";
+import {
+  GenerateExportKey,
+  GeneratePairKey,
+} from "./utils/generate-export-key";
 import {
   CreateTransaction,
   Transaction,
@@ -40,9 +43,9 @@ export class Peer {
   constructor(address: string) {
     this.address = address;
 
-    const { publicKey, privateKey } = GenerateStringKey();
-    this.privateKey = GenerateKey(privateKey, "private");
-    this.publicKey = GenerateKey(publicKey, "public");
+    const { publicKey, privateKey } = GeneratePairKey();
+    this.privateKey = GenerateExportKey(privateKey, "private");
+    this.publicKey = GenerateExportKey(publicKey, "public");
 
     const server = createServer((socket) => {
       this.connections.push(socket);
@@ -126,6 +129,16 @@ export class Peer {
       const transaction = new Transaction(dto);
 
       if (transaction) {
+        //Verificando se pode realizar requisição de transação
+        let balance = this.calculateDiffBalance(
+          transaction,
+          this.calculeBalanceByAddress(this.address)
+        );
+
+        if (balance < 0) {
+          return console.log("Você não possui saldo para essa transação");
+        }
+
         Peer.processingTransaction++;
         this.broadcast({
           action: PeerBroadcastAction.REQUEST_INSERT_TRANSACTION,
@@ -228,13 +241,19 @@ export class Peer {
 
   private effectTransactionsBlock(block: Block) {
     for (const transaction of block.transactions) {
-      this.balance = this.calculateDiffBalance(transaction, this.balance);
+      this.calculateDiffBalance(transaction, this.balance);
     }
   }
 
   private verifyTransactionData(transaction: Transaction) {
     const currentBalance = this.calculeBalanceByAddress(transaction.data.actor);
-    const newBalance = this.calculateDiffBalance(transaction, currentBalance);
+
+    const newBalance = this.calculateDiffBalance(
+      transaction,
+      currentBalance,
+      transaction.data.actor
+    );
+
     return newBalance >= 0;
   }
 
@@ -261,23 +280,31 @@ export class Peer {
     let balance = DEFAULT_BALANCE;
 
     for (const transaction of transactions) {
-      balance = this.calculateDiffBalance(transaction, balance);
+      balance = this.calculateDiffBalance(transaction, balance, address);
     }
 
     return balance;
   }
 
-  private calculateDiffBalance(transaction: Transaction, balance: number) {
+  private calculateDiffBalance(
+    transaction: Transaction,
+    balance: number,
+    address?: string
+  ) {
+    address ||= this.address;
+
     switch (transaction.data.action) {
       case TransactionAction.WITHDRAW:
-        balance -= transaction.data.value;
+        if (transaction.data.actor === address) {
+          balance -= transaction.data.value;
+        }
         break;
       case TransactionAction.TRANSFER: {
-        if (transaction.data.actor === this.address) {
+        if (transaction.data.actor === address) {
           balance -= transaction.data.value;
         }
 
-        if (transaction.data.recipient === this.address) {
+        if (transaction.data.recipient === address) {
           balance += transaction.data.value;
         }
         break;
@@ -292,9 +319,11 @@ export class Peer {
       let transactions = [];
 
       for (const block of this.ledger.blocks) {
-        const filtereds = block.transactions.filter((transaction) =>
-          [transaction.data.actor, transaction.data.recipient].includes(address)
-        );
+        const filtereds = block.transactions.filter((transaction) => {
+          return [transaction.data.actor, transaction.data.recipient].includes(
+            address
+          );
+        });
 
         transactions.push(...filtereds);
       }
