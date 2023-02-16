@@ -42,6 +42,7 @@ export const commandMap: Record<string, any> = {
       });
     }
   },
+  "/list": (prop: CommandMapProp) => console.log(prop.peer.addressConnecteds),
   "/exit": (prop: CommandMapProp) => prop.peer.exit(),
 };
 

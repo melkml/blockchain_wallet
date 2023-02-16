@@ -94,6 +94,7 @@ export class Peer {
           publicKey: this.publicKey,
         },
       };
+
       this.socket.write(JSON.stringify(data));
     }
   }
@@ -146,8 +147,15 @@ export class Peer {
   }
 
   private handleData(socket: Socket, data: string | Buffer) {
-    const peerAction = JSON.parse(data.toString()) as PeerActionData;
-    // console.log("CONTEXT", peerAction.action);
+    let peerAction: PeerActionData;
+
+    try {
+      peerAction = JSON.parse(data.toString());
+    } catch (e) {
+      peerAction = JSON.parse(JSON.stringify(data));
+    }
+
+    console.log("CONTEXT", peerAction.action);
 
     switch (peerAction.action) {
       case PeerBroadcastAction.SHARE_LEDGER:
@@ -177,6 +185,7 @@ export class Peer {
         }
         break;
       case PeerBroadcastAction.REQUEST_INSERT_TRANSACTION:
+        console.log("NEW REQUEST TRANSACTION", peerAction);
         //Condição para aguardar enquanto transações estiverem sendo processada
         Await(Peer.processingTransaction !== 0);
 
@@ -354,7 +363,9 @@ export class Peer {
 
   private prepareListeners(socket: Socket) {
     welcome();
-    socket.on("data", (data) => this.handleData(socket, data));
+    socket.on("data", (data) => {
+      this.handleData(socket, data);
+    });
 
     socket.on("end", () => {
       this.connections = this.connections.filter((conn) => {
