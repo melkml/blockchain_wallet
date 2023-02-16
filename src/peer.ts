@@ -1,10 +1,7 @@
 import { createServer, Socket } from "net";
 import { PeerActionData, PeerBroadcastAction } from "./peer-action";
 import { Chain } from "./chain";
-import {
-  GenerateExportKey,
-  GeneratePairKey,
-} from "./utils/generate-export-key";
+import { GeneratePairKey } from "./utils/generate-export-key";
 import {
   CreateTransaction,
   Transaction,
@@ -44,8 +41,8 @@ export class Peer {
     this.address = address;
 
     const { publicKey, privateKey } = GeneratePairKey();
-    this.privateKey = GenerateExportKey(privateKey, "private");
-    this.publicKey = GenerateExportKey(publicKey, "public");
+    this.privateKey = privateKey;
+    this.publicKey = publicKey;
 
     const server = createServer((socket) => {
       this.connections.push(socket);
