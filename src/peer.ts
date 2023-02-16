@@ -25,7 +25,8 @@ export type ShareLedger = Chain & {
 export const DEFAULT_BALANCE = 100;
 
 export class Peer {
-  static amoutWishes = 0;
+  static amountProsWishes = 0;
+  static amountConsWishes = 0;
   static processingTransaction = 0;
 
   address: string;
@@ -155,7 +156,7 @@ export class Peer {
       peerAction = JSON.parse(JSON.stringify(data));
     }
 
-    console.log("CONTEXT", peerAction.action);
+    console.log(`HANDLE-DATA`, peerAction);
 
     switch (peerAction.action) {
       case PeerBroadcastAction.SHARE_LEDGER:
@@ -185,7 +186,6 @@ export class Peer {
         }
         break;
       case PeerBroadcastAction.REQUEST_INSERT_TRANSACTION:
-        console.log("NEW REQUEST TRANSACTION", peerAction);
         //Condição para aguardar enquanto transações estiverem sendo processada
         Await(Peer.processingTransaction !== 0);
 
@@ -195,21 +195,46 @@ export class Peer {
           this.verifySignature(peerAction.data) &&
           this.verifyTransactionData(peerAction.data);
 
-        this.broadcast({
+        const response = {
           action: PeerBroadcastAction.CAN_INSERT_TRANSACTION,
           data: {
             transaction: peerAction.data,
             validate: canInsert,
           },
-        });
+        };
 
-        this.tryInsertTransaction(peerAction.data, canInsert);
+        socket.write(JSON.stringify(response));
 
         break;
       case PeerBroadcastAction.CAN_INSERT_TRANSACTION:
         const { transaction, validate } = peerAction.data;
 
-        this.tryInsertTransaction(transaction, validate);
+        const wishes = validate ? "amountProsWishes" : "amountConsWishes";
+
+        Peer[wishes]++;
+
+        const canTryInsert =
+          Peer.amountConsWishes + Peer.amountProsWishes ===
+          this.addressConnecteds.length;
+
+        if (canTryInsert) {
+          const validateByWishes =
+            Peer.amountProsWishes >= this.addressConnecteds.length / 2;
+
+          if (validateByWishes) {
+            this.insertTransaction(transaction);
+
+            this.broadcast({
+              action: PeerBroadcastAction.INSERT_TRANSACTION,
+              data: {
+                transaction,
+              },
+            });
+          }
+        }
+        break;
+      case PeerBroadcastAction.INSERT_TRANSACTION:
+        this.insertTransaction(peerAction.data.transaction);
         break;
       case PeerBroadcastAction.EXIT:
         if (this.ledger) {
@@ -221,13 +246,8 @@ export class Peer {
     }
   }
 
-  private tryInsertTransaction(transaction: Transaction, validate: boolean) {
-    if (validate) Peer.amoutWishes++;
-
-    const validateByWishes =
-      Peer.amoutWishes >= this.addressConnecteds.length / 2;
-
-    if (this.ledger && validateByWishes) {
+  private insertTransaction(transaction: Transaction) {
+    if (this.ledger) {
       const feedback = this.ledger.insertTransaction(transaction);
       console.log("Transação registrada!");
 
@@ -240,7 +260,8 @@ export class Peer {
         console.log("Seu saldo:", this.balance);
       }
 
-      Peer.amoutWishes = 0;
+      Peer.amountConsWishes = 0;
+      Peer.amountProsWishes = 0;
       Peer.processingTransaction--;
     }
   }
