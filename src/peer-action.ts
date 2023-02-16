@@ -5,6 +5,8 @@ export enum PeerBroadcastAction {
   SHARE_PUBLIC_KEY = "share-public-key",
   REQUEST_INSERT_TRANSACTION = "request-insert-transaction",
   CAN_INSERT_TRANSACTION = "can-insert-transaction",
+
+  INSERT_TRANSACTION = "insert-transaction",
   EXIT = "exit",
 }
 
