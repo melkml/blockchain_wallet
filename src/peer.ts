@@ -127,9 +127,9 @@ export class Peer {
 
       if (transaction) {
         //Verificando se pode realizar requisição de transação
-        let balance = this.calculateDiffBalance(
+        let balance = this.calculatePostTransactionBalance(
           transaction,
-          this.calculeBalanceByAddress(this.address)
+          this.calculateBalanceByAddress(this.address)
         );
 
         if (balance < 0) {
@@ -238,14 +238,19 @@ export class Peer {
 
   private effectTransactionsBlock(block: Block) {
     for (const transaction of block.transactions) {
-      this.calculateDiffBalance(transaction, this.balance);
+      this.balance = this.calculatePostTransactionBalance(
+        transaction,
+        this.balance
+      );
     }
   }
 
   private verifyTransactionData(transaction: Transaction) {
-    const currentBalance = this.calculeBalanceByAddress(transaction.data.actor);
+    const currentBalance = this.calculateBalanceByAddress(
+      transaction.data.actor
+    );
 
-    const newBalance = this.calculateDiffBalance(
+    const newBalance = this.calculatePostTransactionBalance(
       transaction,
       currentBalance,
       transaction.data.actor
@@ -271,19 +276,30 @@ export class Peer {
     return false;
   }
 
-  private calculeBalanceByAddress(address: string) {
-    const transactions = this.filterTransactionByAddress(address);
+  private calculateBalanceByAddress(address: string) {
+    const transactions = this.filterTransactionsByAddress(address);
 
     let balance = DEFAULT_BALANCE;
 
     for (const transaction of transactions) {
-      balance = this.calculateDiffBalance(transaction, balance, address);
+      balance = this.calculatePostTransactionBalance(
+        transaction,
+        balance,
+        address
+      );
     }
 
     return balance;
   }
 
-  private calculateDiffBalance(
+  /**
+   * Calcula saldo depois de uma transação
+   * @param transaction
+   * @param balance
+   * @param address
+   * @private
+   */
+  private calculatePostTransactionBalance(
     transaction: Transaction,
     balance: number,
     address?: string
@@ -294,6 +310,11 @@ export class Peer {
       case TransactionAction.WITHDRAW:
         if (transaction.data.actor === address) {
           balance -= transaction.data.value;
+        }
+        break;
+      case TransactionAction.DEPOSIT:
+        if (transaction.data.actor === address) {
+          balance += transaction.data.value;
         }
         break;
       case TransactionAction.TRANSFER: {
@@ -311,7 +332,7 @@ export class Peer {
     return balance;
   }
 
-  private filterTransactionByAddress(address: string) {
+  private filterTransactionsByAddress(address: string) {
     if (this.ledger) {
       let transactions = [];
 

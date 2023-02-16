@@ -12,6 +12,8 @@ export interface CreateTransaction {
 export enum TransactionAction {
   WITHDRAW = "withdraw",
   TRANSFER = "transfer",
+
+  DEPOSIT = "deposit",
 }
 
 export interface TransactionData {

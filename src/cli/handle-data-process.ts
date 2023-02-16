@@ -16,7 +16,17 @@ export const commandMap: Record<string, any> = {
       prop.peer.startTransaction({
         action: TransactionAction.WITHDRAW,
         actor: prop.peer.address,
-        value: parseInt(prop.value),
+        value: +prop.value,
+        privateKeyActor: prop.peer.privateKey,
+      });
+    }
+  },
+  "/deposit": (prop: CommandMapProp) => {
+    if (prop.value) {
+      prop.peer.startTransaction({
+        action: TransactionAction.DEPOSIT,
+        actor: prop.peer.address,
+        value: +prop.value,
         privateKeyActor: prop.peer.privateKey,
       });
     }
@@ -26,7 +36,7 @@ export const commandMap: Record<string, any> = {
       prop.peer.startTransaction({
         action: TransactionAction.TRANSFER,
         actor: prop.peer.address,
-        value: parseInt(prop.value),
+        value: +prop.value,
         recipient: prop.address,
         privateKeyActor: prop.peer.privateKey,
       });
