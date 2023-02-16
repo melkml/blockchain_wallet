@@ -35,7 +35,6 @@ export class Peer {
   publicKey: Key;
   balance: number = DEFAULT_BALANCE;
   ledger?: Chain;
-  socket: Socket | undefined;
   connections: Socket[] = [];
 
   constructor(address: string) {
@@ -74,30 +73,26 @@ export class Peer {
   connect(address: string) {
     const [host, port] = address.split(":");
 
-    this.socket = new Socket();
+    const socket = new Socket();
 
-    this.socket.connect(+port, host, () => {
-      this.addressConnecteds.push(address);
-      this.onConnect();
-    });
+    socket.connect(+port, host, () => this.onConnect(socket, address));
   }
 
-  onConnect() {
-    if (this.socket) {
-      console.log("OK");
-      this.connections.push(this.socket);
-      this.prepareListeners(this.socket);
+  onConnect(socket: Socket, address: string) {
+    console.log("OK");
+    this.connections.push(socket);
+    this.prepareListeners(socket);
+    this.addressConnecteds.push(address);
 
-      const data = {
-        action: PeerBroadcastAction.SHARE_PUBLIC_KEY,
-        data: {
-          address: this.address,
-          publicKey: this.publicKey,
-        },
-      };
+    const data = {
+      action: PeerBroadcastAction.SHARE_PUBLIC_KEY,
+      data: {
+        address: this.address,
+        publicKey: this.publicKey,
+      },
+    };
 
-      this.socket.write(JSON.stringify(data));
-    }
+    socket.write(JSON.stringify(data));
   }
 
   broadcast(peerAction: PeerActionData) {
@@ -173,6 +168,8 @@ export class Peer {
           publicKeyList.forEach(({ address }) => {
             if (!this.addressConnecteds.includes(address)) {
               this.connect(address);
+
+              console.log("Tentanndo se conectar a ", address);
             }
           });
         }
@@ -180,9 +177,8 @@ export class Peer {
       case PeerBroadcastAction.SHARE_PUBLIC_KEY:
         if (this.ledger) {
           const { address, publicKey } = peerAction.data;
-          this.ledger.setPublicKey(address, publicKey);
-
           this.addressConnecteds.push(address);
+          this.ledger.setPublicKey(address, publicKey);
         }
         break;
       case PeerBroadcastAction.REQUEST_INSERT_TRANSACTION:
@@ -383,7 +379,7 @@ export class Peer {
   }
 
   private prepareListeners(socket: Socket) {
-    welcome();
+    // welcome();
     socket.on("data", (data) => {
       this.handleData(socket, data);
     });
